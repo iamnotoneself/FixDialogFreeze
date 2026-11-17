@@ -2,7 +2,7 @@
 
 修复《黑暗侦探》（The Darkside Detective）游戏中**对话框随机卡死、按任何键都没反应**的问题。
 
-双击运行即可，无需安装任何依赖（仅使用 Windows 自带的 cmd 和 PowerShell）。
+2.0 版用 Rust 重写：单个 exe，无需安装任何运行库，双击即可运行。
 
 ## 症状
 
@@ -19,7 +19,7 @@ text.Insert(startCharIdx - 1, "\n")
 ```
 
 当台词首字符就是断行标点（如引号）时 `startCharIdx = 0`，`Insert(-1, ...)` 抛出
-`ArgumentOutOfRangeException`，协程被异常杀死，对话框停留在"异步格式化中"状态
+`ArgumentOutOfRangeException`，协程被异常杀死，对话框停留在“异步格式化中”状态
 且永远无法退出 —— 于是按哪里都没反应。
 
 ## 修复方式
@@ -30,47 +30,38 @@ text.Insert(startCharIdx - 1, "\n")
 - 修复前自动备份为 `SpookyDoorway.DarksideShared.dll.bak`
 - 写入后立即校验，校验不通过会自动还原备份
 
+定位方式是「固定文件偏移 0x136A4 + 334 字节区域 SHA-256 校验」：
+
+| 状态 | 区域哈希（前 8 位） |
+| --- | --- |
+| 原版（有 bug） | `e4c78062…` |
+| 已修复 | `cebe5290…` |
+
+只要区域哈希不是这两个值，工具会直接拒绝修改，避免误伤其它版本。
+
 ## 使用方法（三选一）
 
-1. **双击运行** `FixDialogFreeze.bat` —— 自动从 Epic 游戏清单 / 注册表 / 硬盘搜索定位游戏
-2. **把 DLL 拖到 bat 文件上** —— `SpookyDoorway.DarksideShared.dll` 或整个游戏文件夹都可以
+1. **双击运行** `FixDialogFreeze.exe` —— 自动从 Epic 游戏清单 / 注册表 / 硬盘搜索定位游戏
+2. **把 DLL 拖到 exe 上** —— `SpookyDoorway.DarksideShared.dll` 或整个游戏文件夹都可以
 3. **把游戏文件夹作为参数运行**
 
 ```
-FixDialogFreeze.bat "D:\GAME\TheDarksideDetectivehsD4J"
+FixDialogFreeze.exe "D:\Games\TheDarksideDetective"
 ```
 
-运行结果：
+已经打过补丁的文件会提示“无需重复修复”，并允许输入 `R` 从 `.bak` 还原为原版。
 
-- `[成功] 修复完成！` —— 可以启动游戏验证了
-- `[信息] 该文件已经打过补丁` —— 无需重复修复（此时输入 `R` + 回车可还原原版）
-- `[失败] 无法识别的文件版本` —— 游戏可能已更新，工具**不会做任何修改**，请提交 Issue
+## 从源码构建
 
-## 注意事项
+需要 Rust 工具链（stable）：
 
-- 若 Epic 的"验证 / 修复"还原本文件，重新运行本工具即可
-- 本工具只修改 `SpookyDoorway.DarksideShared.dll` 中已验证的 334 字节区域，其它内容一律不动
-- 不兼容或未知版本的文件会被安全拒绝，绝不会写入未验证的数据
+```
+cargo build --release
+```
 
-## 支持的版本
+产物位于 `target/release/FixDialogFreeze.exe`。
 
-| 项目 | 状态 |
-|------|------|
-| 平台 | Epic Games（已验证） |
-| 文件 | `SpookyDoorway.DarksideShared.dll`（区域哈希见脚本内常量） |
-| 系统 | Windows 10 / 11（依赖自带 PowerShell 5.1） |
+## 说明
 
-其它平台（Steam / GOG）理论上同版本 DLL 适用，欢迎测试后反馈。
-
-## 提交 Issue
-
-遇到"无法识别的文件版本"或修复无效时，请提供：
-
-- 游戏平台（Epic / Steam / GOG）与购买来源
-- 游戏版本号
-- 运行截图或完整输出文字
-
-## 免责说明
-
-本工具直接修改游戏安装目录中的 DLL 文件。虽然有自动备份和写入后校验，
-仍建议重要存档另行备份。使用本工具即表示理解并接受相应风险。
+若 Epic 的“验证/修复”把文件还原成原版，重新运行本工具即可。
+遇到无法识别的版本，请到本仓库提交 Issue，注明游戏平台与游戏版本。

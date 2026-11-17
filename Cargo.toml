@@ -1,0 +1,9 @@
+[package]
+name = "FixDialogFreeze"
+version = "2.0.0"
+edition = "2024"
+description = "《黑暗侦探》对话框卡死一键修复工具（Rust 版）"
+
+[dependencies]
+sha2 = "0.10"
+winreg = "0.56.0"
